@@ -159,4 +159,4 @@ for cnt, i in enumerate(rst_dict, start=1):
     print("Solutaion {:}: {:}".format(cnt, i))
 
 elapsed_time = time.time() - starttime
-print('Total {:} results find for input: {:} [Elapase time {:}] '.format(len(rst_dict.keys()), u_in, elapsed_time))
+print('Total {:} results find for input: {:} [Elapase time: {:.3f}s] '.format(len(rst_dict.keys()), u_in, elapsed_time))
