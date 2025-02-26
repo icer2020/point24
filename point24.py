@@ -3,9 +3,19 @@ import time
 
 starttime = time.time()
 
+number = input(f'Please input 4 digits(space is seperater) as point24 input:\n')
+
+
+u_in = []
+for i in number.split():
+    u_in.append(int(i))
+
+print("digit: " + number)
+
 # u_in = [1, 2, 3, 4]
 # u_in = [7, 9, 2, 3]
-u_in = [1, 6, 1, 8]
+# u_in = [7, 9, 6, 8]
+# u_in = [1, 6, 1, 8]
 # u_in = [1, 4, 2, 3]
 # u_in = [70, 7, 7, 7]
 # u_in = [0, 0, 0, 0]
