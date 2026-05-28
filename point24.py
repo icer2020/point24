@@ -26,13 +26,25 @@ TEMPLATES = [
     lambda a, b, c, d, ops: calc(a, calc(b, calc(c, d, ops[2]), ops[1]), ops[0]),
 ]
 
-FMT = [
-    '(({a} {o0} {b}) {o1} {c}) {o2} {d}',
-    '({a} {o0} ({b} {o1} {c})) {o2} {d}',
-    '{a} {o0} (({b} {o1} {c}) {o2} {d})',
-    '({a} {o0} {b}) {o1} ({c} {o2} {d})',
-    '{a} {o0} ({b} {o1} ({c} {o2} {d}))',
-]
+PREC = {'+': 1, '-': 1, '*': 2, '/': 2}
+
+
+def to_string(node, parent_op=None, side=None):
+    if not isinstance(node, tuple):
+        return str(node)
+    op, left, right = node
+    left_s = to_string(left, op, 'left')
+    right_s = to_string(right, op, 'right')
+    result = f'{left_s} {op} {right_s}'
+    if parent_op is not None:
+        child_p = PREC[op]
+        parent_p = PREC[parent_op]
+        if child_p < parent_p:
+            result = f'({result})'
+        elif child_p == parent_p and side == 'right' and parent_op in ('-', '/'):
+            result = f'({result})'
+    return result
+
 
 TREES = [
     lambda a, b, c, d, ops: (ops[2], (ops[1], (ops[0], a, b), c), d),
@@ -130,7 +142,7 @@ def point24_solve(numbers):
                             key = canonical(tree)
                             if key not in seen:
                                 seen.add(key)
-                                expr = FMT[idx].format(a=a, b=b, c=c, d=d, o0=o0, o1=o1, o2=o2)
+                                expr = to_string(tree)
                                 solutions[expr] = True
     return list(solutions.keys())
 
@@ -145,7 +157,7 @@ def main():
     elapsed = time.time() - start
 
     for i, expr in enumerate(solutions, 1):
-        print(f'Solution {i}: ({expr}) = 24')
+        print(f'Solution {i}: {expr} = 24')
 
     print(f'Total {len(solutions)} results for input: {numbers} [Elapsed time: {elapsed:.3f}s]')
 
