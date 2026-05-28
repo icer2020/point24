@@ -1,174 +1,154 @@
 import itertools as it
+from fractions import Fraction
 import time
 
-starttime = time.time()
 
-number = input(f'Please input 4 digits(space is seperater) as point24 input:\n')
-
-
-u_in = []
-for i in number.split():
-    u_in.append(int(i))
-
-print("digit: " + number)
-
-# u_in = [1, 2, 3, 4]
-# u_in = [7, 9, 2, 3]
-# u_in = [7, 9, 6, 8]
-# u_in = [1, 6, 1, 8]
-# u_in = [1, 4, 2, 3]
-# u_in = [70, 7, 7, 7]
-# u_in = [0, 0, 0, 0]
-
-def clt(x, y, o):
-    if (o == "+"):
-        return (x + y)
-    elif o == "-":
-        return (x - y)
-    elif o == "*":
-        return (x * y)
-    elif o == "/":
+def calc(x, y, op):
+    if x is None or y is None:
+        return None
+    if op == '+':
+        return x + y
+    elif op == '-':
+        return x - y
+    elif op == '*':
+        return x * y
+    elif op == '/':
         if y == 0:
-            return(0.00000001)
+            return None
+        return Fraction(x, y)
+
+
+TEMPLATES = [
+    lambda a, b, c, d, ops: calc(calc(calc(a, b, ops[0]), c, ops[1]), d, ops[2]),
+    lambda a, b, c, d, ops: calc(calc(a, calc(b, c, ops[1]), ops[0]), d, ops[2]),
+    lambda a, b, c, d, ops: calc(a, calc(calc(b, c, ops[1]), d, ops[2]), ops[0]),
+    lambda a, b, c, d, ops: calc(calc(a, b, ops[0]), calc(c, d, ops[2]), ops[1]),
+    lambda a, b, c, d, ops: calc(a, calc(b, calc(c, d, ops[2]), ops[1]), ops[0]),
+]
+
+FMT = [
+    '(({a} {o0} {b}) {o1} {c}) {o2} {d}',
+    '({a} {o0} ({b} {o1} {c})) {o2} {d}',
+    '{a} {o0} (({b} {o1} {c}) {o2} {d})',
+    '({a} {o0} {b}) {o1} ({c} {o2} {d})',
+    '{a} {o0} ({b} {o1} ({c} {o2} {d}))',
+]
+
+TREES = [
+    lambda a, b, c, d, ops: (ops[2], (ops[1], (ops[0], a, b), c), d),
+    lambda a, b, c, d, ops: (ops[2], (ops[0], a, (ops[1], b, c)), d),
+    lambda a, b, c, d, ops: (ops[0], a, (ops[2], (ops[1], b, c), d)),
+    lambda a, b, c, d, ops: (ops[1], (ops[0], a, b), (ops[2], c, d)),
+    lambda a, b, c, d, ops: (ops[0], a, (ops[1], b, (ops[2], c, d))),
+]
+
+
+def _get_terms(node, sign=1):
+    if not isinstance(node, tuple):
+        return [(sign, str(node))]
+    op, left, right = node
+    if op == '+':
+        return _get_terms(left, sign) + _get_terms(right, sign)
+    elif op == '-':
+        return _get_terms(left, sign) + _get_terms(right, -sign)
+    else:
+        return [(sign, canonical(node))]
+
+
+def _get_factors(node, numerator=True):
+    if not isinstance(node, tuple):
+        return [(numerator, str(node))]
+    op, left, right = node
+    if op == '*':
+        return _get_factors(left, numerator) + _get_factors(right, numerator)
+    elif op == '/':
+        return _get_factors(left, numerator) + _get_factors(right, not numerator)
+    else:
+        return [(numerator, canonical(node))]
+
+
+def _rebuild_factors(factors):
+    num = sorted(s for n, s in factors if n)
+    den = sorted(s for n, s in factors if not n)
+
+    if not num:
+        num_str = '1'
+    else:
+        num_str = num[0]
+        for s in num[1:]:
+            num_str = f'({num_str} * {s})'
+
+    if not den:
+        return num_str
+
+    den_str = den[0]
+    for s in den[1:]:
+        den_str = f'({den_str} * {s})'
+
+    return f'({num_str} / {den_str})'
+
+
+def _rebuild_terms(terms):
+    terms.sort(key=lambda t: t[1])
+    first_sign, first_s = terms[0]
+    result = f'-{first_s}' if first_sign == -1 else first_s
+    for sign, term_s in terms[1:]:
+        if sign == 1:
+            result = f'({result} + {term_s})'
         else:
-            return (x / y)
-
-def clt4(a, b, c, d, o_list):
-    results= []
-
-    # order: ((a ? b) ? c) ? d
-    # print(a, b, c, d, o_list)
-    rst1 = clt(x=a, y=b, o=o_list[0])
-    # print('clt1: {:} {:} {:} = {:}'.format(a, o_list[0], b, rst1))
-    rst2 = clt(x=rst1, y=c, o=o_list[1])
-    # print('clt2: {:} {:} {:} = {:}'.format(rst1, o_list[1], c, rst2))
-    rst3 = clt(x=rst2, y=d, o=o_list[2])
-    # print('clt3: {:} {:} {:} = {:}'.format(rst2, o_list[2], d, rst3))
-    results.append(rst3)
-    if rst3 == 24:
-        pass
-        # print("====0 fomular is (({:} {:} {:}) {:} {:}) {:} {:} = {:}".format(a, o_list[0], b, o_list[1], c, o_list[2], d, rst3))
- 
-    # order: (a ? (b ? c)) ? d
-    rst1 = clt(x=b, y=c, o=o_list[1])
-    rst2 = clt(x=a, y=rst1, o=o_list[0])
-    rst3 = clt(x=rst2, y=d, o=o_list[2])
-    if rst3 == 24:
-        pass
-        # print("====1 fomular is ({:} {:} ({:} {:} {:})) {:} {:} = {:}".format(a, o_list[0], b, o_list[1], c, o_list[2], d, rst3))
-        
-    results.append(rst3)
-
-    # order: a ? ((b ? c) ? d)
-    rst1 = clt(x=b, y=c, o=o_list[1])
-    rst2 = clt(x=rst1, y=d, o=o_list[2])
-    rst3 = clt(x=a, y=rst2, o=o_list[0])
-    results.append(rst3)
-    if rst3 == 24:
-        pass
-        #print("====2 fomular is {:} {:} (({:} {:} {:}) {:} {:}) = {:}".format(a, o_list[0], b, o_list[1], c, o_list[2], d, rst3))
-        
- 
-
-    # order: (a ? b) ? (c ? d)
-    rst1 = clt(x=a, y=b, o=o_list[0])
-    rst2 = clt(x=c, y=d, o=o_list[2])
-    rst3 = clt(x=rst1, y=rst2, o=o_list[1])
-    results.append(rst3)
-    if rst3 == 24:
-        pass
-        # print("====3 fomular is ({:} {:} {:}) {:} ({:} {:} {:}) = {:}".format(a, o_list[0], b, o_list[1], c, o_list[2], d, rst3))
- 
-    # order: a ? (b ? (c ? d))
-    rst1 = clt(x=c, y=d, o=o_list[2])
-    rst2 = clt(x=b, y=rst1, o=o_list[1])
-    rst3 = clt(x=a, y=rst2, o=o_list[0])
-    results.append(rst3)
-    if rst3 == 24:
-        pass
-        # print("====3 fomular is ({:} {:} {:}) {:} ({:} {:} {:}) = {:}".format(a, o_list[0], b, o_list[1], c, o_list[2], d, rst3))
- 
-    return results
+            result = f'({result} - {term_s})'
+    return result
 
 
-oper = ['-', '+', '*', '/']
-rst = {}
-for o in oper:
-    pass
-    # print(clt(x=u_in[0], y=u_in[1], o=o))
+def canonical(node):
+    if not isinstance(node, tuple):
+        return str(node)
+    op = node[0]
 
-m = 0
-for i in it.permutations(u_in, 4):
-    m += 1
-    # print("==", m, i,type(i))
+    if op in ('+', '-'):
+        return _rebuild_terms(_get_terms(node))
+    if op in ('*', '/'):
+        return _rebuild_factors(_get_factors(node))
 
-m = 0
-for i in oper:
-    for j in oper:
-        for k in oper:
-            m += 1
-            # print("==", m, i, j, k)
+    return None
 
 
+def point24_solve(numbers):
+    ops = ['+', '-', '*', '/']
+    solutions = {}
+    seen = set()
 
-# rst_list = []
-rst_dict = {}
-for l in it.permutations(u_in, 4):
-    o_list = []
-    for i in oper:
-        for j in oper:
-            for k in oper:
-                m += 1
-                # o_list.append(i)
-                # o_list.append(j)
-                # o_list.append(k)
-                o_list = [i, j, k]
-                # print("==", m, i, j, k)
-                rst = clt4(a=l[0], b=l[1], c=l[2], d=l[3], o_list= o_list )
-                # order: ((a ? b) ? c) ? d
-                # order: (a ? (b ? c)) ? d
-                # order: a ? ((b ? c) ? d)
-                # order: (a ? b) ? (c ? d)
-                # order: a ? (b ? (c ? d))
-                if rst[0] == 24:
-                    fomula = '(({:} {:} {:}) {:} {:}) {:} {:} = {:}'.format(l[0], o_list[0], l[1], o_list[1], l[2], o_list[2], l[3], int(rst[0]))
-                    # rst_list.append(fomula)
-                    if fomula not in rst_dict:
-                        rst_dict[fomula] = 1
-                if rst[1] == 24:
-                    fomula = '({:} {:} ({:} {:} {:})) {:} {:} = {:}'.format(l[0], o_list[0], l[1], o_list[1], l[2], o_list[2], l[3], int(rst[1]))
-                    # rst_list.append(fomula)
-                    if fomula not in rst_dict:
-                        rst_dict[fomula] = 1
-
-                if rst[2] == 24:
-                    fomula = '{:} {:} (({:} {:} {:}) {:} {:}) = {:}'.format(l[0], o_list[0], l[1], o_list[1], l[2], o_list[2], l[3], int(rst[2]))
-                    # rst_list.append(fomula)
-                    if fomula not in rst_dict:
-                        rst_dict[fomula] = 1
-                if rst[3] == 24:
-                    fomula = '({:} {:} {:}) {:} ({:} {:} {:}) = {:}'.format(l[0], o_list[0], l[1], o_list[1], l[2], o_list[2], l[3], int(rst[3]))
-                    # rst_list.append(fomula)
-                    if fomula not in rst_dict:
-                        rst_dict[fomula] = 1
-                if rst[4] == 24:
-                    fomula = '{:} {:} ({:} {:} ({:} {:} {:})) = {:}'.format(l[0], o_list[0], l[1], o_list[1], l[2], o_list[2], l[3], int(rst[4]))
-                    # rst_list.append(fomula)
-                    if fomula not in rst_dict:
-                        rst_dict[fomula] = 1
+    for a, b, c, d in it.permutations(numbers, 4):
+        for o0 in ops:
+            for o1 in ops:
+                for o2 in ops:
+                    op_list = (o0, o1, o2)
+                    for idx in range(len(TEMPLATES)):
+                        result = TEMPLATES[idx](a, b, c, d, op_list)
+                        if result is not None and result == 24:
+                            tree = TREES[idx](a, b, c, d, op_list)
+                            key = canonical(tree)
+                            if key not in seen:
+                                seen.add(key)
+                                expr = FMT[idx].format(a=a, b=b, c=c, d=d, o0=o0, o1=o1, o2=o2)
+                                solutions[expr] = True
+    return list(solutions.keys())
 
 
-                # if rst == 24:
-                #     fomula = '(({:} {:} {:}) {:} {:}) {:} {:} = {:}'.format(l[0], o_list[0], l[1], o_list[1], l[2], o_list[2], l[3], int(rst))
-                #     rst_list.append(fomula)
-                #     # print("==== {:} fomular is {:} {:} {:} {:} {:} {:} {:} = {:}".format(m, l[0], o_list[0], l[1], o_list[1], l[2], o_list[2], l[3], rst))
-    # if (rst == '24'): 
-    #     print("fomular is {:} {:} {:} {:} {:} {:} {:} = {:}".format(l[0], o_list[0], l[1], o_list[1], l[2], o_list[2], l[3], rst))
+def main():
+    raw = input('Please input 4 digits (space separated) as point24 input:\n')
+    numbers = [int(x) for x in raw.split()]
+    print(f'digits: {raw}')
 
-for cnt, i in enumerate(rst_dict, start=1):
-    print("Solutaion {:}: {:}".format(cnt, i))
+    start = time.time()
+    solutions = point24_solve(numbers)
+    elapsed = time.time() - start
 
-elapsed_time = time.time() - starttime
-print('Total {:} results find for input: {:} [Elapase time: {:.3f}s] '.format(len(rst_dict.keys()), u_in, elapsed_time))
+    for i, expr in enumerate(solutions, 1):
+        print(f'Solution {i}: ({expr}) = 24')
+
+    print(f'Total {len(solutions)} results for input: {numbers} [Elapsed time: {elapsed:.3f}s]')
 
 
+if __name__ == '__main__':
+    main()
