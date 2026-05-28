@@ -3,7 +3,7 @@
 '''
 @File          :   point24.py
 @Time          :   2026/05/28 10:00:00
-@Author        :   way-on
+@Author        :   ICer
 @Version       :   1.0
 @Contact       :   i_chip_backend@163.com
 @WebSite       :   https://blog.csdn.net/i_chip_backend
